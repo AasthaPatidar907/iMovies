@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Backend default URL: http://localhost:5000
+Backend default URL: http://https://imovies-eex6.onrender.com
 
 ## Included
 - Movie browsing, search, genre filters, popular/upcoming sections

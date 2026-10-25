@@ -332,7 +332,7 @@ useEffect(() => {
   async function loadMovies() {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/movies?city=${encodeURIComponent(city)}`
+        `http://https://imovies-eex6.onrender.com/api/movies?city=${encodeURIComponent(city)}`
       );
 
       if (!response.ok) {
@@ -371,7 +371,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/bookings?email=${encodeURIComponent(user.email)}`
+        `http://https://imovies-eex6.onrender.com/api/bookings?email=${encodeURIComponent(user.email)}`
       );
 
       if (!response.ok) {
@@ -553,7 +553,7 @@ async function confirmBooking() {
   };
 
   try {
-    const response = await fetch("http://localhost:5000/api/bookings", {
+    const response = await fetch("http://https://imovies-eex6.onrender.com/api/bookings", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -618,7 +618,7 @@ async function cancelBooking(bookingId) {
     }
 
     const response = await fetch(
-      `http://localhost:5000/api/bookings/${encodeURIComponent(bookingId)}?email=${encodeURIComponent(email)}`,
+      `http://https://imovies-eex6.onrender.com/api/bookings/${encodeURIComponent(bookingId)}?email=${encodeURIComponent(email)}`,
       { method: "DELETE" }
     );
 
