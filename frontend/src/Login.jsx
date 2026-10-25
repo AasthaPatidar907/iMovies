@@ -36,7 +36,7 @@ export default function Login({ onLoginSuccess }) {
       const endpoint = isRegistering ? "register" : "login";
 
       const response = await fetch(
-        `http://https://imovies-eex6.onrender.com/api/auth/${endpoint}`,
+        `https://imovies-eex6.onrender.com/api/auth/${endpoint}`,
         {
           method: "POST",
           headers: {
