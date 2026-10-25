@@ -329,32 +329,34 @@ useEffect(() => {
 
 
 
-  async function loadMovies() {
-    try {
-      const response = await fetch(
-        `http://https://imovies-eex6.onrender.com/api/movies?city=${encodeURIComponent(city)}`
-      );
 
-      if (!response.ok) {
-        throw new Error("Could not load movies");
-      }
+async function loadMovies() {
+  try {
+    const response = await fetch(
+      `https://imovies-eex6.onrender.com/api/movies?city=${encodeURIComponent(city)}`
+    );
 
-      const data = await response.json();
-
-      if (!cancelled) {
-        setMovies(
-          data.map((movie) => ({
-            ...movie,
-            id: movie._id,
-            image: movie.image || ""
-          }))
-        );
-      }
-    } catch (error) {
-      console.error("Movie loading failed:", error);
-      if (!cancelled) setMovies([]);
+    if (!response.ok) {
+      throw new Error("Could not load movies");
     }
+
+    const data = await response.json();
+
+    if (!cancelled) {
+      setMovies(
+        data.map((movie) => ({
+          ...movie,
+          id: movie._id,
+          image: movie.image || ""
+        }))
+      );
+    }
+  } catch (error) {
+    console.error("Movie loading failed:", error);
+    if (!cancelled) setMovies([]);
   }
+}
+
 
   loadMovies();
 
