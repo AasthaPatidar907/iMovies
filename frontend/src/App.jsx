@@ -293,7 +293,19 @@ function Poster({ movie }) {
     </div>
   );
 }
+function getUserWishlistKey(user) {
+  return user?.email
+    ? `imovies-wishlist-${user.email.toLowerCase()}`
+    : "imovies-wishlist-guest";
+}
 
+function readWishlist(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || [];
+  } catch {
+    return [];
+  }
+}
 export default function App() {
   const [city, setCity] = useState("Indore");
   const [movies, setMovies] = useState([]);
@@ -303,19 +315,31 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("All");
 
- const [wishlist, setWishlist] = useState(() => {
-  try {
-    return JSON.parse(localStorage.getItem("imovies-wishlist")) || [];
-  } catch {
-    return [];
-  }
+
+const [wishlistKey, setWishlistKey] = useState(() => {
+  const token = localStorage.getItem("imoviesToken");
+  const user = JSON.parse(
+    localStorage.getItem("imoviesUser") || "null"
+  );
+
+  return token && user?.email
+    ? getUserWishlistKey(user)
+    : "imovies-wishlist-guest";
 });
+
+const [wishlist, setWishlist] = useState(() =>
+  readWishlist(wishlistKey)
+);
+
 useEffect(() => {
   localStorage.setItem(
-    "imovies-wishlist",
+    wishlistKey,
     JSON.stringify(wishlist)
   );
-}, [wishlist]);
+}, [wishlist, wishlistKey]);
+
+
+
   const [page, setPage] = useState("movies");
   const [activeMovie, setActiveMovie] = useState(null);
   const [selectedDate, setSelectedDate] = useState("Today");
@@ -364,46 +388,7 @@ async function loadMovies() {
     cancelled = true;
   };
 }, [city]);
-  useEffect(() => {
-  async function loadBookings() {
-    const token = localStorage.getItem("imoviesToken");
-    const user = JSON.parse(localStorage.getItem("imoviesUser") || "null");
-
-    if (!token || !user?.email) return;
-
-    try {
-      const response = await fetch(
-        `https://imovies-eex6.onrender.com/api/bookings?email=${encodeURIComponent(user.email)}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Could not load bookings.");
-      }
-
-      const data = await response.json();
-
-      const savedBookings = data.map((booking) => ({
-        id: booking._id,
-        movie: typeof booking.movie === "string"
-          ? { title: booking.movie }
-          : booking.movie,
-        cinema: booking.cinema || "Cinema",
-        area: booking.area || "",
-        city: booking.city || "",
-        date: booking.date,
-        time: booking.showtime,
-        seats: booking.seats,
-        total: booking.total
-      }));
-
-      setBookings(savedBookings);
-    } catch (error) {
-      console.error("Could not load bookings:", error);
-    }
-  }
-
-  loadBookings();
-}, []);
+  
   const [showWishlist, setShowWishlist] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showBookings, setShowBookings] = useState(false);
@@ -422,6 +407,63 @@ const [currentUser, setCurrentUser] = useState(() => {
 const [isLoggedIn, setIsLoggedIn] = useState(
   () => Boolean(localStorage.getItem("imoviesToken"))
 );
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadBookings() {
+    if (!isLoggedIn || !currentUser?.email) {
+      setBookings([]);
+      return;
+    }
+
+    setBookings([]);
+
+    try {
+      const response = await fetch(
+        `https://imovies-eex6.onrender.com/api/bookings?email=${encodeURIComponent(
+          currentUser.email
+        )}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not load bookings.");
+      }
+
+      const data = await response.json();
+
+      if (cancelled) return;
+
+      setBookings(
+        data.map((booking) => ({
+          id: booking._id,
+          movie:
+            typeof booking.movie === "string"
+              ? { title: booking.movie }
+              : booking.movie,
+          cinema: booking.cinema || "Cinema",
+          area: booking.area || "",
+          city: booking.city || "",
+          date: booking.date,
+          time: booking.showtime,
+          seats: booking.seats,
+          total: booking.total
+        }))
+      );
+    } catch (error) {
+      if (!cancelled) {
+        console.error("Could not load bookings:", error);
+      }
+    }
+  }
+
+  loadBookings();
+
+  return () => {
+    cancelled = true;
+  };
+}, [isLoggedIn, currentUser?.email]);
+
   const cinemas = useMemo(
   () =>
     getCinemas(city).map((item) => ({
@@ -465,14 +507,47 @@ const [isLoggedIn, setIsLoggedIn] = useState(
     setGenre("All");
     setSelectedSeats([]);
   }
+function toggleWishlist(movieId) {
+  const token = localStorage.getItem("imoviesToken");
+  const user = JSON.parse(
+    localStorage.getItem("imoviesUser") || "null"
+  );
 
-  function toggleWishlist(movieId) {
-    setWishlist((current) =>
-      current.includes(movieId)
-        ? current.filter((id) => id !== movieId)
-        : [...current, movieId]
-    );
-  }
+  const key =
+    token && user?.email
+      ? getUserWishlistKey(user)
+      : "imovies-wishlist-guest";
+
+  setWishlist((current) => {
+    const updated = current.includes(movieId)
+      ? current.filter((id) => id !== movieId)
+      : [...current, movieId];
+
+    localStorage.setItem(key, JSON.stringify(updated));
+    return updated;
+  });
+}
+
+function handleLogout() {
+  localStorage.removeItem("imoviesToken");
+  localStorage.removeItem("imoviesUser");
+
+  setBookings([]);
+  setCurrentUser(null);
+  setIsLoggedIn(false);
+
+  setWishlistKey("imovies-wishlist-guest");
+  setWishlist(readWishlist("imovies-wishlist-guest"));
+
+  setShowWishlist(false);
+  setShowBookings(false);
+  setShowProfileMenu(false);
+  setShowLogin(false);
+
+  setPage("movies");
+  setToast("You have been logged out.");
+}
+
 
   function openBooking(movie) {
     setActiveMovie(movie);
@@ -733,14 +808,7 @@ async function cancelBooking(bookingId) {
           </button>
 
           <button
-            onClick={() => {
-              localStorage.removeItem("imoviesToken");
-              localStorage.removeItem("imoviesUser");
-              setCurrentUser(null);
-              setIsLoggedIn(false);
-              setShowProfileMenu(false);
-              setToast("You have been logged out.");
-            }}
+            onClick={handleLogout}
           >
             <span>↪</span> Logout
           </button>
@@ -834,15 +902,7 @@ async function cancelBooking(bookingId) {
       setShowWishlist(false);
       setShowBookings(true);
     }}
-    onLogout={() => {
-      localStorage.removeItem("imoviesToken");
-      localStorage.removeItem("imoviesUser");
-      setCurrentUser(null);
-      setIsLoggedIn(false);
-      setPage("movies");
-      setShowProfileMenu(false);
-      setToast("You have been logged out.");
-    }}
+    onLogout={handleLogout}
   />
 ) : page === "movies" ? (
           <>
@@ -1334,16 +1394,22 @@ async function cancelBooking(bookingId) {
             </button>
 
             <Login
-  onLoginSuccess={(user) => {
-    setCurrentUser(user);
-    setIsLoggedIn(true);
-    setShowLogin(false);
-    setToast(
-      activeMovie
-        ? "Login successful! Click Confirm booking again to finish."
-        : "Login successful!"
-    );
-  }}
+onLoginSuccess={(user) => {
+  const key = getUserWishlistKey(user);
+
+  setWishlistKey(key);
+  setWishlist(readWishlist(key));
+
+  setCurrentUser(user);
+  setIsLoggedIn(true);
+  setShowLogin(false);
+
+  setToast(
+    activeMovie
+      ? "Login successful! Click Confirm booking again to finish."
+      : "Login successful!"
+  );
+}}
 />
           </div>
         </div>
